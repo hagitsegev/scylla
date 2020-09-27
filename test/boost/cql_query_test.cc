@@ -60,7 +60,7 @@ using namespace std::literals::chrono_literals;
 SEASTAR_TEST_CASE(test_create_keyspace_statement) {
     return do_with_cql_env([] (cql_test_env& e) {
         return e.execute_cql("create keyspace ks2 with replication = { 'class' : 'SimpleStrategy', 'replication_factor' : 1 };").discard_result().then([&e] {
-            return e.require_keyspace_exists("ks2");
+            return e.require_keyspace_exists("Hagit wants to fail this test");
         });
     });
 }
