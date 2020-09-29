@@ -383,6 +383,7 @@ static std::vector<std::vector<bytes_opt>> to_bytes(const cql_transport::message
 }
 
 static size_t column_index(const cql_transport::messages::result_message::rows& rows, const sstring& name) {
+/*
     size_t res = 0;
     for (auto& col : rows.rs().get_metadata().get_names()) {
         if (col->name->text() == name) {
@@ -390,7 +391,8 @@ static size_t column_index(const cql_transport::messages::result_message::rows& 
         }
         ++res;
     }
-    throw std::invalid_argument("No such column: " + name);
+*/
+    throw std::invalid_argument("No such column: Hagit wants to fail the test");
 }
 
 template<typename Comp = std::equal_to<bytes_opt>>
@@ -567,7 +569,7 @@ SEASTAR_THREAD_TEST_CASE(test_pre_post_image_logging) {
                     BOOST_REQUIRE_EQUAL(pre_image.size(), i + 1);
 
                     val = *pre_image.back()[val_index];
-                    // note: no val2 in pre-image, because we are not modifying it. 
+                    // note: no val2 in pre-image, because we are not modifying it.
                     BOOST_REQUIRE_EQUAL(int32_type->decompose(1111), *pre_image.back()[ck2_index]);
                     BOOST_REQUIRE_EQUAL(data_value(last), val_type->deserialize(bytes_view(val)));
                     BOOST_REQUIRE_EQUAL(bytes_opt(), pre_image.back()[ttl_index]);
@@ -691,7 +693,7 @@ SEASTAR_THREAD_TEST_CASE(test_range_deletion) {
         cquery_nofail(e, "DELETE FROM ks.tbl WHERE pk = 123 AND ck > 1 AND ck < 23");
         cquery_nofail(e, "DELETE FROM ks.tbl WHERE pk = 123 AND ck >= 4 AND ck <= 56");
 
-        auto msg = e.execute_cql(format("SELECT \"{}\", \"{}\", \"{}\", \"{}\" FROM ks.{}", 
+        auto msg = e.execute_cql(format("SELECT \"{}\", \"{}\", \"{}\", \"{}\" FROM ks.{}",
             cdc::log_meta_column_name("time"),
             cdc::log_data_column_name("pk"),
             cdc::log_data_column_name("ck"),
@@ -753,8 +755,8 @@ SEASTAR_THREAD_TEST_CASE(test_add_columns) {
     }, mk_cdc_test_config()).get();
 }
 
-// #5582 - just quickly test that we can create the cdc enabled table on a different shard 
-// and still get the logs proper. 
+// #5582 - just quickly test that we can create the cdc enabled table on a different shard
+// and still get the logs proper.
 SEASTAR_THREAD_TEST_CASE(test_cdc_across_shards) {
     do_with_cql_env_thread([](cql_test_env& e) {
         if (smp::count < 2) {
@@ -830,7 +832,7 @@ SEASTAR_THREAD_TEST_CASE(test_ttls) {
                 auto cell_ttl_seconds = value_cast<int32_t>(cell_ttl);
                 // 30% tolerance in case of slow execution (a little flaky...)
                 BOOST_REQUIRE_CLOSE((float)cell_ttl_seconds, (float)ttl_seconds, 30.f);
-            }            
+            }
         };
         test_ttl(0);
         test_ttl(10);
@@ -851,13 +853,13 @@ struct col_test {
     data_value post = data_value::make_null(int32_type); // whatever
 };
 
-// iterate a set of updates and verify pre and delta values. 
+// iterate a set of updates and verify pre and delta values.
 static void test_collection(cql_test_env& e, data_type val_type, data_type del_type, std::vector<col_test> tests, translate_func f = [](data_value v) { return v; }) {
     auto col_type = val_type;
 
     for (auto& t : tests) {
         cquery_nofail(e, t.update);
-        
+
         auto rows = select_log(e, "tbl");
         auto pre_image = to_bytes_filtered(*rows, cdc::operation::pre_image);
         auto updates = to_bytes_filtered(*rows, cdc::operation::update);
@@ -918,7 +920,7 @@ SEASTAR_THREAD_TEST_CASE(test_map_logging) {
         auto map_keys_type = set_type_impl::get_instance(utf8_type, false);
 
         test_collection(e, map_type, map_keys_type, {
-            { 
+            {
                 "UPDATE ks.tbl set val = { 'apa':'ko' } where pk=1 and pk2=11 and ck=111",
                 data_value::make_null(map_type), // no previous value
                 {
@@ -930,7 +932,7 @@ SEASTAR_THREAD_TEST_CASE(test_map_logging) {
                 },
                 ::make_map_value(map_type, { { "apa", "ko" } })
             },
-            { 
+            {
                 "UPDATE ks.tbl set val = val + { 'ninja':'mission' } where pk=1 and pk2=11 and ck=111",
                 ::make_map_value(map_type, { { "apa", "ko" } }),
                 {
@@ -941,9 +943,9 @@ SEASTAR_THREAD_TEST_CASE(test_map_logging) {
                 },
                 ::make_map_value(map_type, { { "apa", "ko" }, { "ninja", "mission" } })
             },
-            { 
+            {
                 "UPDATE ks.tbl set val['ninja'] = 'shuriken' where pk=1 and pk2=11 and ck=111",
-                ::make_map_value(map_type, { { "apa", "ko" }, { "ninja", "mission" } }), 
+                ::make_map_value(map_type, { { "apa", "ko" }, { "ninja", "mission" } }),
                 {
                     {
                         ::make_map_value(map_type, { { "ninja", "shuriken" } }),
@@ -952,9 +954,9 @@ SEASTAR_THREAD_TEST_CASE(test_map_logging) {
                 },
                 ::make_map_value(map_type, { { "apa", "ko" }, { "ninja", "shuriken" } })
             },
-            { 
+            {
                 "UPDATE ks.tbl set val['apa'] = null where pk=1 and pk2=11 and ck=111",
-                ::make_map_value(map_type, { { "apa", "ko" }, { "ninja", "shuriken" } }), 
+                ::make_map_value(map_type, { { "apa", "ko" }, { "ninja", "shuriken" } }),
                 {
                     {
                         data_value::make_null(map_type),
@@ -963,9 +965,9 @@ SEASTAR_THREAD_TEST_CASE(test_map_logging) {
                 },
                 ::make_map_value(map_type, { { "ninja", "shuriken" } })
             },
-            { 
+            {
                 "UPDATE ks.tbl set val['ninja'] = null, val['ola'] = 'kokos' where pk=1 and pk2=11 and ck=111",
-                ::make_map_value(map_type, { { "ninja", "shuriken" } }), 
+                ::make_map_value(map_type, { { "ninja", "shuriken" } }),
                 {
                     {
                         ::make_map_value(map_type, { { "ola", "kokos" } }),
@@ -974,9 +976,9 @@ SEASTAR_THREAD_TEST_CASE(test_map_logging) {
                 },
                 ::make_map_value(map_type, { { "ola", "kokos" } })
             },
-            { 
+            {
                 "UPDATE ks.tbl set val = { 'bolla':'trolla', 'kork':'skruv' } where pk=1 and pk2=11 and ck=111",
-                ::make_map_value(map_type, { { "ola", "kokos" } }), 
+                ::make_map_value(map_type, { { "ola", "kokos" } }),
                 {
                     {
                         ::make_map_value(map_type, { { "bolla", "trolla" }, { "kork", "skruv" } }),
@@ -999,7 +1001,7 @@ SEASTAR_THREAD_TEST_CASE(test_set_logging) {
         });
 
         auto set_type = set_type_impl::get_instance(utf8_type, false);
-        
+
         test_collection(e, set_type, set_type, {
             {
                 "UPDATE ks.tbl set val = { 'apa', 'ko' } where pk=1 and pk2=11 and ck=111",
@@ -1026,7 +1028,7 @@ SEASTAR_THREAD_TEST_CASE(test_set_logging) {
             },
             {
                 "UPDATE ks.tbl set val = val - { 'apa' } where pk=1 and pk2=11 and ck=111",
-                ::make_set_value(set_type, { "apa", "ko", "mission", "ninja" }), 
+                ::make_set_value(set_type, { "apa", "ko", "mission", "ninja" }),
                 {
                     {
                         data_value::make_null(set_type),
@@ -1037,7 +1039,7 @@ SEASTAR_THREAD_TEST_CASE(test_set_logging) {
             },
             {
                 "UPDATE ks.tbl set val = val - { 'mission' }, val = val + { 'nils' } where pk=1 and pk2=11 and ck=111",
-                ::make_set_value(set_type, { "ko", "mission", "ninja" }), 
+                ::make_set_value(set_type, { "ko", "mission", "ninja" }),
                 {
                     {
                         ::make_set_value(set_type, { "nils" }),
@@ -1072,11 +1074,11 @@ SEASTAR_THREAD_TEST_CASE(test_list_logging) {
         auto list_type = list_type_impl::get_instance(utf8_type, false);
         auto uuids_type = set_type_impl::get_instance(timeuuid_type, false);
         auto val_type = map_type_impl::get_instance(list_type->name_comparator(), list_type->value_comparator(), false);
-        
+
         test_collection(e, val_type, uuids_type, {
             {
                 "UPDATE ks.tbl set val = [ 'apa', 'ko' ] where pk=1 and pk2=11 and ck=111",
-                data_value::make_null(list_type), 
+                data_value::make_null(list_type),
                 {
                     {
                         ::make_list_value(list_type, { "apa", "ko" }),
@@ -1121,7 +1123,7 @@ SEASTAR_THREAD_TEST_CASE(test_list_logging) {
             },
             {
                 "UPDATE ks.tbl set val[0] = 'babar' where pk=1 and pk2=11 and ck=111",
-                ::make_list_value(list_type, { "apa", "ko", "ninja", "mission" }), 
+                ::make_list_value(list_type, { "apa", "ko", "ninja", "mission" }),
                 {
                     {
                         ::make_list_value(list_type, { "babar" }),
@@ -1163,7 +1165,7 @@ SEASTAR_THREAD_TEST_CASE(test_udt_logging) {
             e.execute_cql("DROP TYPE ks.mytype").get();
         });
 
-        auto udt_type = user_type_impl::get_instance("ks", to_bytes("mytype"), 
+        auto udt_type = user_type_impl::get_instance("ks", to_bytes("mytype"),
             { to_bytes("field0"), to_bytes("field1") },
             { int32_type, utf8_type },
             false
@@ -1171,18 +1173,18 @@ SEASTAR_THREAD_TEST_CASE(test_udt_logging) {
         auto index_set_type = set_type_impl::get_instance(short_type, false);
         auto f0_type = int32_type;
         auto f1_type = utf8_type;
-        
+
         auto make_tuple = [&](std::optional<std::optional<int32_t>> i, std::optional<std::optional<sstring>> s) {
             return ::make_user_value(udt_type, {
                 i ? ::data_value(*i) : data_value::make_null(f0_type),
                 s ? ::data_value(*s) : data_value::make_null(f1_type),
             });
         };
-        
+
         test_collection(e, udt_type, index_set_type, {
             {
                 "UPDATE ks.tbl set val = { field0: 12, field1: 'ko' } where pk=1 and pk2=11 and ck=111",
-                data_value::make_null(udt_type), 
+                data_value::make_null(udt_type),
                 {
                     {
                         make_tuple(12, "ko"),
